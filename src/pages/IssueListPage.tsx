@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 
 import { deleteIssue, fetchIssues } from '@/api/issues';
+import { IssueCreateModal } from '@/components/issue/IssueCreateModal';
 import { Button } from '@/shared/components/ui/button';
+import { supabase } from '@/shared/lib/supabaseClient';
 import { Issue } from '@/types/issue';
 
 export function IssueListPage() {
@@ -24,7 +26,8 @@ export function IssueListPage() {
     if (!confirm('정말 삭제할까요?')) return;
     try {
       await deleteIssue(id);
-      await loadIssues(); // 새로고침
+      // 삭제 이벤트는 realtime에서도 감지되지만 즉시 반영을 위해 호출
+      await loadIssues();
     } catch (err) {
       console.error('삭제 실패', err);
     }
@@ -32,11 +35,32 @@ export function IssueListPage() {
 
   useEffect(() => {
     loadIssues();
+
+    const channel = supabase
+      .channel('realtime:issues')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // INSERT | UPDATE | DELETE
+          schema: 'public',
+          table: 'issues',
+        },
+        (payload) => {
+          console.log('📡 Realtime 변경 감지:', payload);
+          loadIssues(); // 리스트 새로고침
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, []);
 
   return (
     <div className="mx-auto max-w-xl p-4">
       <h1 className="mb-4 text-xl font-bold">📋 이슈 목록</h1>
+      <IssueCreateModal />
       {loading ? (
         <p>불러오는 중...</p>
       ) : (
