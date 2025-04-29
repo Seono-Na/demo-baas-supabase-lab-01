@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabaseClient';
-import { Issue } from '@/types/issue';
+import { Issue, IssueCreateInput } from '@/types/issue';
 
 // Read: 모든 이슈 불러오기
 export async function fetchIssues(): Promise<Issue[]> {
@@ -20,7 +20,9 @@ export async function fetchIssueById(id: string): Promise<Issue> {
 }
 
 // Create: 새 이슈 생성
-export async function createIssue(issue: Omit<Issue, 'id' | 'created_at'>) {
+export async function createIssue(
+  issue: Omit<IssueCreateInput, 'id' | 'created_at'>
+) {
   const { error } = await supabase.from('issues').insert([issue]);
   if (error) throw error;
 }
